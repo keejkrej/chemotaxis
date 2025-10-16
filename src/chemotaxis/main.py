@@ -6,7 +6,14 @@ from pathlib import Path
 from typing import Optional
 import typer
 import sys
+import logging
 from .tracker import CellTracker
+
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 app = typer.Typer(
     help="Automated cell tracking from microscopy images using Cellpose and UlTrack"
@@ -76,11 +83,11 @@ def main(
         chemotaxis data/egf -o results_egf --no-intermediate
     """
     try:
-        input_path = Path(input)
+        input_path = input
 
         # Handle both file and directory inputs
         if input_path.is_dir():
-            print(f"Loading image sequence from directory: {input_path}")
+            typer.echo(f"Loading image sequence from directory: {input_path}")
             # Find image files
             supported_formats = ("*.jpg", "*.jpeg", "*.png", "*.tiff", "*.tif")
             image_files = []
@@ -89,17 +96,17 @@ def main(
                 image_files.extend(sorted(input_path.glob(fmt.upper())))
 
             if not image_files:
-                print(f"Error: No image files found in {input_path}", file=sys.stderr)
+                typer.echo(f"Error: No image files found in {input_path}", err=True)
                 raise typer.Exit(code=1)
 
-            print(f"Found {len(image_files)} image files")
+            typer.echo(f"Found {len(image_files)} image files")
 
             # Load images
             try:
                 import numpy as np
                 from PIL import Image
 
-                print("Loading images...")
+                typer.echo("Loading images...")
                 images_list = []
                 for img_path in image_files:
                     img = Image.open(img_path)
@@ -107,14 +114,14 @@ def main(
 
                 images = np.array(images_list)
             except Exception as e:
-                print(f"Error loading images: {e}", file=sys.stderr)
+                typer.echo(f"Error loading images: {e}", err=True)
                 raise typer.Exit(code=1)
         else:
-            print(f"Loading image from file: {input_path}")
+            typer.echo(f"Loading image from file: {input_path}")
             tracker = CellTracker(model_type=model, use_gpu=not no_gpu)
             images = tracker.load_images(input_path)
 
-        print(f"Image shape: {images.shape}")
+        typer.echo(f"Image shape: {images.shape}")
 
         # Initialize tracker
         tracker = CellTracker(model_type=model, use_gpu=not no_gpu)
@@ -126,7 +133,7 @@ def main(
             "min_track_length": min_track_length,
         }
 
-        print("Starting segmentation and tracking...")
+        typer.echo("Starting segmentation and tracking...")
         segmentations, tracked = tracker.process_timelapse(
             images,
             diameter=diameter,
@@ -137,10 +144,10 @@ def main(
         output.mkdir(parents=True, exist_ok=True)
 
         if not no_intermediate:
-            print("Saving intermediate segmentation and tracking masks...")
+            typer.echo("Saving intermediate segmentation and tracking masks...")
             tracker.save_intermediate_results(output, segmentations, tracked)
 
-        print("Extracting and exporting cell tracks...")
+        typer.echo("Extracting and exporting cell tracks...")
         tracker.extract_and_export_tracks(
             tracked,
             output,
@@ -148,16 +155,16 @@ def main(
             min_track_length=min_track_length,
         )
 
-        print(f"\n✓ Successfully completed analysis")
-        print(f"✓ Results saved to: {output}")
-        print(f"✓ Output files:")
-        print(f"  - tracks.csv: All cell coordinates")
-        print(f"  - tracks.json: Coordinates with statistics")
-        print(f"  - tracks_summary.csv: Summary statistics per track")
+        typer.echo(f"\n✓ Successfully completed analysis")
+        typer.echo(f"✓ Results saved to: {output}")
+        typer.echo(f"✓ Output files:")
+        typer.echo(f"  - tracks.csv: All cell coordinates")
+        typer.echo(f"  - tracks.json: Coordinates with statistics")
+        typer.echo(f"  - tracks_summary.csv: Summary statistics per track")
 
     except Exception as e:
         if not isinstance(e, typer.Exit):
-            print(f"Error: {e}", file=sys.stderr)
+            typer.echo(f"Error: {e}", err=True)
             raise typer.Exit(code=1)
         raise
 

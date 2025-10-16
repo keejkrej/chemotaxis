@@ -10,7 +10,12 @@ from pathlib import Path
 import json
 import csv
 import numpy as np
+import logging
+import typer
 from scipy import ndimage
+
+# Setup logger
+logger = logging.getLogger(__name__)
 
 
 class TrackExtractor:
@@ -235,7 +240,7 @@ class TrackExporter:
                 for frame_idx, x, y in trajectories[track_id]:
                     writer.writerow([track_id, frame_idx, f"{x:.2f}", f"{y:.2f}"])
 
-        print(f"Exported {len(trajectories)} tracks to {output_path}")
+        typer.echo(f"Exported {len(trajectories)} tracks to {output_path}")
 
     @staticmethod
     def to_json(
@@ -281,7 +286,7 @@ class TrackExporter:
         with open(output_path, "w") as f:
             json.dump(data, f, indent=2)
 
-        print(f"Exported {len(trajectories)} tracks to {output_path}")
+        typer.echo(f"Exported {len(trajectories)} tracks to {output_path}")
 
     @staticmethod
     def to_summary_csv(
@@ -310,7 +315,7 @@ class TrackExporter:
             rows.append(stats)
 
         if not rows:
-            print("No tracks to export")
+            typer.echo("No tracks to export")
             return
 
         # Get all keys
@@ -321,4 +326,4 @@ class TrackExporter:
             writer.writeheader()
             writer.writerows(rows)
 
-        print(f"Exported statistics for {len(rows)} tracks to {output_path}")
+        typer.echo(f"Exported statistics for {len(rows)} tracks to {output_path}")
